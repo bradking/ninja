@@ -101,6 +101,9 @@ Node* State::GetNode(StringPiece path, uint64_t slash_bits) {
 Node* State::CreateNode(StringPiece path, uint64_t slash_bits) {
   Node* node = new Node(path.AsString(), slash_bits);
   paths_[node->path()] = node;
+#ifdef _WIN32
+  paths_lower_[node->path_lower()] = node;
+#endif
   return node;
 }
 
@@ -110,6 +113,26 @@ Node* State::LookupNode(StringPiece path) const {
     return i->second;
   return NULL;
 }
+
+#ifdef _WIN32
+Node* State::GetNodeCaseInsensitive(StringPiece path, uint64_t slash_bits) {
+  if (Node* node = LookupNodeCaseInsensitive(path))
+    return node;
+  return CreateNode(path, slash_bits);
+}
+
+Node* State::LookupNodeCaseInsensitive(StringPiece path) const {
+  char stack_buf[1024];
+  vector<char> heap_buf;
+  char* buf = path.size() <= sizeof(stack_buf)
+              ? stack_buf
+              : (heap_buf.resize(path.size()), heap_buf.data());
+  transform(path.begin(), path.end(), buf, ::tolower);
+  StringPiece path_lower(buf, path.size());
+  Paths::const_iterator i = paths_lower_.find(path_lower);
+  return i != paths_lower_.end() ? i->second : NULL;
+}
+#endif
 
 Node* State::SpellcheckNode(const string& path) {
   const bool kAllowReplacements = true;
