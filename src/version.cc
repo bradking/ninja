@@ -20,7 +20,12 @@
 
 using namespace std;
 
-const char* kNinjaVersion = "1.13.0.git";
+#ifdef _WIN32
+#  define MSVC_DEPFILE ".msvcdepfile-1"
+#else
+#  define MSVC_DEPFILE ""
+#endif
+const char* kNinjaVersion = "1.12.1.git.kitware.jobserver-1" MSVC_DEPFILE;
 
 void ParseVersion(const string& version, int* major, int* minor) {
   size_t end = version.find('.');
