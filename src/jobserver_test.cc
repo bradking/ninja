@@ -151,6 +151,8 @@ TEST(Jobserver, ParseMakeFlagsValue) {
   ASSERT_TRUE(Jobserver::ParseMakeFlagsValue("--jobserver-auth=10,42", &config,
                                              &error));
   EXPECT_EQ(Jobserver::Config::kModePipe, config.mode);
+  EXPECT_EQ(10, config.read_fd);
+  EXPECT_EQ(42, config.write_fd);
 
   config = {};
   error.clear();
@@ -184,12 +186,23 @@ TEST(Jobserver, ParseNativeMakeFlagsValue) {
   Jobserver::Config config;
   std::string error;
 
-  // --jobserver-auth=R,W is not supported.
+#ifdef _WIN32
+  // --jobserver-auth=R,W is not supported on Windows.
   config = {};
   error.clear();
   EXPECT_FALSE(Jobserver::ParseNativeMakeFlagsValue("--jobserver-auth=3,4",
                                                     &config, &error));
-  EXPECT_EQ(error, "Pipe-based protocol is not supported!");
+  EXPECT_EQ(error, "Pipe mode is not supported on Windows!");
+#else   // !_WIN32
+  // --jobserver-auth=R,W supported on Posix.
+  config = {};
+  error.clear();
+  EXPECT_TRUE(Jobserver::ParseNativeMakeFlagsValue("--jobserver-auth=3,4",
+                                                   &config, &error));
+  EXPECT_EQ(Jobserver::Config::kModePipe, config.mode);
+  EXPECT_EQ(3, config.read_fd);
+  EXPECT_EQ(4, config.write_fd);
+#endif  // !_WIN32
 
 #ifdef _WIN32
   // --jobserver-auth=NAME works on Windows.
