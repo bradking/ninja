@@ -1,3 +1,17 @@
+Kitware maintains this branch of Ninja in order to provide features
+that have not been integrated and released upstream:
+
+* jobserver pipe mode support
+
+This branch may be *rebased* without notice for maintenance on top of
+the upstream `master` branch.
+
+Parts of this branch have been rejected from upstream consideration:
+
+* https://github.com/ninja-build/ninja/pull/2506#issuecomment-2659944455
+
+-----------------------------------------------------------------------------
+
 # Ninja
 
 Ninja is a small build system with a focus on speed.
