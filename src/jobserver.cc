@@ -37,18 +37,16 @@ bool GetPrefixedValue(StringPiece input, StringPiece prefix,
 
 // Try to read a comma-separated pair of file descriptors from |input|.
 // On success return true and set |config->mode| accordingly. Otherwise return
-// false if the input doesn't follow the appropriate format. Note that the
-// values are not saved since pipe mode is not supported.
+// false if the input doesn't follow the appropriate format.
 bool GetFileDescriptorPair(StringPiece input, Jobserver::Config* config) {
-  int read_fd = 1, write_fd = -1;
   std::string pair = input.AsString();
-  if (sscanf(pair.c_str(), "%d,%d", &read_fd, &write_fd) != 2)
+  if (sscanf(pair.c_str(), "%d,%d", &config->read_fd, &config->write_fd) != 2)
     return false;
 
   // From
   // https://www.gnu.org/software/make/manual/html_node/POSIX-Jobserver.html Any
   // negative descriptor means the feature is disabled.
-  if (read_fd < 0 || write_fd < 0)
+  if (config->read_fd < 0 || config->write_fd < 0)
     config->mode = Jobserver::Config::kModeNone;
   else
     config->mode = Jobserver::Config::kModePipe;
@@ -189,13 +187,13 @@ bool Jobserver::ParseNativeMakeFlagsValue(const char* makeflags_env,
   if (!ParseMakeFlagsValue(makeflags_env, config, error))
     return false;
 
-  if (config->mode == Jobserver::Config::kModePipe) {
-    *error = "Pipe-based protocol is not supported!";
-    return false;
-  }
 #ifdef _WIN32
   if (config->mode == Jobserver::Config::kModePosixFifo) {
     *error = "FIFO mode is not supported on Windows!";
+    return false;
+  }
+  if (config->mode == Jobserver::Config::kModePipe) {
+    *error = "Pipe mode is not supported on Windows!";
     return false;
   }
 #else   // !_WIN32

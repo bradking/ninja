@@ -33,6 +33,41 @@ bool IsFifoDescriptor(int fd) {
   return (ret == 0) && ((info.st_mode & S_IFMT) == S_IFIFO);
 }
 
+bool SetNonBlockingFd(int fd) {
+  int flags = fcntl(fd, F_GETFL, 0);
+  if (!(flags & O_NONBLOCK)) {
+    int ret = fcntl(fd, F_SETFL, flags | O_NONBLOCK);
+    if (ret < 0)
+      return false;
+  }
+  return true;
+}
+
+bool SetCloseOnExecFd(int fd) {
+  int flags = fcntl(fd, F_GETFD, 0);
+  if (!(flags & FD_CLOEXEC)) {
+    int ret = fcntl(fd, F_SETFD, flags | FD_CLOEXEC);
+    if (ret < 0)
+      return false;
+  }
+  return true;
+}
+
+// Duplicate the descriptor and make the result non-blocking and
+// close-on-exec.
+bool DuplicateDescriptor(int from_fd, int* to_fd) {
+  int new_fd = dup(from_fd);
+  if (new_fd < 0) {
+    return false;
+  }
+  if (!SetNonBlockingFd(new_fd) || !SetCloseOnExecFd(new_fd)) {
+    ::close(new_fd);
+    return false;
+  }
+  *to_fd = new_fd;
+  return true;
+}
+
 // Implementation of Jobserver::Client for Posix systems
 class PosixJobserverClient : public Jobserver::Client {
  public:
@@ -75,6 +110,28 @@ class PosixJobserverClient : public Jobserver::Client {
       ret = ::write(write_fd_, &slot_char, 1);
     } while (ret < 0 && errno == EINTR);
     (void)ret;  // Nothing can be done in case of error here.
+  }
+
+  // Initialize instance with two explicit pipe file descriptors.
+  bool InitWithPipeFds(int read_fd, int write_fd, std::string* error) {
+    // Verify that the file descriptors belong to FIFOs.
+    if (!IsFifoDescriptor(read_fd) || !IsFifoDescriptor(write_fd)) {
+      *error = "Invalid file descriptors";
+      return false;
+    }
+    // Duplicate the file descriptors to make then non-blocking, and
+    // close-on-exec. This is important because the original descriptors
+    // might be inherited by sub-processes of this client.
+    if (!DuplicateDescriptor(read_fd, &read_fd_)) {
+      *error = "Could not duplicate read descriptor";
+      return false;
+    }
+    if (!DuplicateDescriptor(write_fd, &write_fd_)) {
+      *error = "Could not duplicate write descriptor";
+      // Let destructor close read_fd_.
+      return false;
+    }
+    return true;
   }
 
   // Initialize with FIFO file path.
@@ -122,6 +179,8 @@ std::unique_ptr<Jobserver::Client> Jobserver::Client::Create(
   auto client = std::unique_ptr<PosixJobserverClient>(new PosixJobserverClient);
   if (config.mode == Jobserver::Config::kModePosixFifo) {
     success = client->InitWithFifo(config.path, error);
+  } else if (config.mode == Jobserver::Config::kModePipe) {
+    success = client->InitWithPipeFds(config.read_fd, config.write_fd, error);
   } else {
     *error = "Unsupported jobserver mode";
   }

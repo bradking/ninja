@@ -253,42 +253,7 @@ class JobserverTest(unittest.TestCase):
 
     @unittest.skipIf(_PLATFORM_IS_WINDOWS, "These test methods do not work on Windows")
     def test_jobserver_client_with_posix_pipe(self):
-        # Verify that setting up a --pipe server does not make Ninja exit with an error.
-        # Instead, a warning is printed.
-        task_count = 4
-        build_plan = generate_build_plan(task_count)
-        with BuildDir(build_plan) as b:
-
-            prefix_args = [
-                sys.executable,
-                "-S",
-                _JOBSERVER_POOL_SCRIPT,
-                "--pipe",
-                f"--jobs={task_count}",
-            ]
-
-            def run_ninja_with_jobserver_pipe(args):
-                ret = b.ninja_spawn(args, prefix_args=prefix_args)
-                ret.check_returncode()
-                return ret.stdout, ret.stderr
-
-            output, error = run_ninja_with_jobserver_pipe(["all"])
-            if _DEBUG:
-                print(f"OUTPUT [{output}]\nERROR [{error}]\n", file=sys.stderr)
-            self.assertTrue(error.find("Pipe-based protocol is not supported!") >= 0)
-
-            max_overlaps = compute_max_overlapped_spans(b.path, task_count)
-            self.assertEqual(max_overlaps, task_count)
-
-            # Using an explicit -j<N> ignores the jobserver pool.
-            b.ninja_clean()
-            output, error = run_ninja_with_jobserver_pipe(["-j1", "all"])
-            if _DEBUG:
-                print(f"OUTPUT [{output}]\nERROR [{error}]\n", file=sys.stderr)
-            self.assertFalse(error.find("Pipe-based protocol is not supported!") >= 0)
-
-            max_overlaps = compute_max_overlapped_spans(b.path, task_count)
-            self.assertEqual(max_overlaps, 1)
+        self._run_client_test([sys.executable, "-S", _JOBSERVER_POOL_SCRIPT, "--pipe"])
 
     def _test_MAKEFLAGS_value(
         self, ninja_args: T.List[str] = [], prefix_args: T.List[str] = []

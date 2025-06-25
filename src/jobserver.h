@@ -111,8 +111,7 @@ struct Jobserver {
     /// kModePipe means that `--jobserver-auth=R,W` is used to
     ///    pass a pair of file descriptors to client processes. This also
     ///    matches `--jobserver-fds=R,W` which is an old undocumented
-    ///    variant of the same scheme. This mode is not supported by
-    ///    Ninja, but recognized by the parser.
+    ///    variant of the same scheme.
     ///
     /// kModePosixFifo means that `--jobserver-auth=fifo:PATH` is used to
     ///    pass the path of a Posix FIFO to client processes. This is not
@@ -144,6 +143,11 @@ struct Jobserver {
     /// For kModeFifo, this is the path to the Unix FIFO to use.
     /// For kModeSemaphore, this is the name of the Win32 semaphore to use.
     std::string path;
+
+    /// For kModePipe, these are the file descriptor values
+    /// extracted from MAKEFLAGS.
+    int read_fd = -1;
+    int write_fd = -1;
 
     /// Return true if this instance matches an active implementation mode.
     /// This does not try to validate configuration parameters though.
