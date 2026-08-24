@@ -207,7 +207,8 @@ This feature is automatically enabled under the following conditions:
 
 - The `MAKEFLAGS` environment variable is defined and describes a valid
   jobserver mode using `--jobserver-auth=SEMAPHORE_NAME` on Windows, or
-  `--jobserver-auth=fifo:PATH` on Posix.
+  `--jobserver-auth=fifo:PATH`, `--jobserver-auth=<read>,<write>`, or
+  even `--jobserver-fds=R,W` on Posix.
 
 In this case, Ninja will use the jobserver pool of job slots to control
 parallelism, instead of its default parallel implementation.
@@ -215,11 +216,9 @@ parallelism, instead of its default parallel implementation.
 Note that load-average limitations (i.e. when using `-l<count>`)
 are still being enforced in this mode.
 
-IMPORTANT: On Posix, only the FIFO-based version of the protocol, which is
-implemented by GNU Make 4.4 and higher, is supported. Ninja will detect
-when a pipe-based jobserver is being used (i.e. when `MAKEFLAGS` contains
-`--jobserver-auth=<read>,<write>`) and will print a warning, but will
-otherwise ignore it.
+IMPORTANT: On Posix, the FIFO-based version of the protocol, which is
+implemented by GNU Make 4.4 and higher, is preferred. Ninja will warn
+when a pipe-based jobserver is being used.
 
 Environment variables
 ~~~~~~~~~~~~~~~~~~~~~

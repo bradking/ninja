@@ -1578,6 +1578,13 @@ std::unique_ptr<Jobserver::Client> NinjaMain::SetupJobserverClient(
 
   if (config_.verbosity > BuildConfig::NO_STATUS_UPDATE) {
     status->Info("Jobserver mode detected: %s", makeflags);
+#ifndef _WIN32
+    if (jobserver_config.mode == Jobserver::Config::kModePipe) {
+      status->Warning(
+          "Jobserver 'pipe' mode detected, a pool that implements 'fifo' mode "
+          "would be more reliable!");
+    }
+#endif
   }
 
   result = Jobserver::Client::Create(jobserver_config, &err);
